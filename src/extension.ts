@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { runGitCommand } from './gitUtils';
+import { GitService } from './GitService';
 import { DiffSidebarProvider } from './DiffSidebarProvider';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -26,13 +26,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 		try {
 			// Get branches (local and remote)
-			const branches = await runGitCommand(cwd, 'branch -a --format="%(refname:short)"');
-			const branchList = branches.split('\n')
-				.map(b => b.trim())
-				.filter(b => b !== '' && !b.includes('HEAD')); // Filter out HEAD pointer
-
-			// Default to main or master if available, else current
-			const currentBranch = (await runGitCommand(cwd, 'branch --show-current')).trim();
+			const { current: currentBranch, all: branchList } = await GitService.getBranches(cwd);
 
 			const savedDefault = context.workspaceState.get<string>('defaultBranch');
 			let defaultBranch = savedDefault;
@@ -60,13 +54,13 @@ export function activate(context: vscode.ExtensionContext) {
 
 			// Get changed files (triple dot for merge base comparison)
 			// --name-status to see added/modified/deleted
-			const repoRoot = (await runGitCommand(cwd, 'rev-parse --show-toplevel')).trim();
+			const repoRoot = await GitService.getRepoRoot(cwd);
 			const cleanTarget = targetBranch.trim();
 
 			// Find merge base to compare against "what I'm working on" vs "what others did"
 			let diffRef = cleanTarget;
 			try {
-				const mergeBase = (await runGitCommand(repoRoot, `merge-base "${cleanTarget}" HEAD`)).trim();
+				const mergeBase = await GitService.getMergeBase(repoRoot, cleanTarget, 'HEAD');
 				if (mergeBase) {
 					diffRef = mergeBase;
 				}
@@ -75,27 +69,12 @@ export function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 
-			const diffOutput = await runGitCommand(repoRoot, `diff --name-status "${diffRef}"`);
+			const files = await GitService.getChangedFiles(repoRoot, diffRef);
 
-			if (!diffOutput.trim()) {
+			if (files.length === 0) {
 				vscode.window.showInformationMessage('No changes found.');
 				return;
 			}
-
-			const files = diffOutput.split('\n').filter(l => l.trim()).map(line => {
-				const parts = line.split('\t');
-				const status = parts[0];
-				let filePath = parts[1];
-				let originalPath: string | undefined;
-
-				if (status.startsWith('R')) {
-					filePath = parts[2];
-					originalPath = parts[1];
-				}
-
-				const absolutePath = path.join(repoRoot, filePath);
-				return { status, filePath, originalPath, absolutePath };
-			});
 
 			const items = files.map(f => ({
 				label: f.filePath,
@@ -152,9 +131,9 @@ class GitContentProvider implements vscode.TextDocumentContentProvider {
 		// The uri.path coming from `vscode.Uri.parse` will start with /.
 		const relativePath = uri.path.startsWith('/') ? uri.path.substring(1) : uri.path;
 
-		return runGitCommand(cwd, `show ${ref}:${relativePath}`)
-			.catch(() => ""); // Return empty string if file doesn't exist in target (e.g. new file)
+		return GitService.getFileContent(cwd, ref, relativePath);
 	}
 }
 
 export function deactivate() {}
+
