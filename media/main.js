@@ -16,10 +16,13 @@
     contextMenu.className = 'context-menu';
     document.body.appendChild(contextMenu);
 
-    let currentFiles = [];
-    let currentBranch = '';
-    let currentDiffRef = '';
-    let allBranches = [];
+    const previousState = vscode.getState();
+
+    let currentFiles = previousState ? previousState.files : [];
+    let currentBranch = previousState ? previousState.currentBranch : '';
+    let currentDiffRef = previousState ? previousState.diffRef : '';
+    let allBranches = previousState ? previousState.branches : [];
+    let defaultBranch = previousState ? previousState.defaultBranch : '';
     let activeContextMenuFileItem = null;
 
     // Close context menu on click anywhere
@@ -41,7 +44,14 @@
     });
 
     // Initial load
-    vscode.postMessage({ type: 'getBranches' });
+    if (previousState) {
+        updateBranches(allBranches, currentBranch, defaultBranch);
+        if (currentFiles.length > 0) {
+            renderFiles();
+        }
+    } else {
+        vscode.postMessage({ type: 'getBranches' });
+    }
 
     refreshBtn.addEventListener('click', () => {
         vscode.postMessage({ type: 'getBranches' });
@@ -152,8 +162,10 @@
         }
     });
 
-    function updateBranches(branches, current, defaultBranch) {
+    function updateBranches(branches, current, defBranch) {
         allBranches = branches;
+        defaultBranch = defBranch;
+        saveState();
         
         // If we already had a selection, keep it if possible
         if (currentBranch && branches.includes(currentBranch)) {
@@ -171,6 +183,17 @@
         currentBranch = targetBranch;
         currentDiffRef = diffRef;
         renderFiles();
+        saveState();
+    }
+
+    function saveState() {
+        vscode.setState({
+            files: currentFiles,
+            currentBranch: currentBranch,
+            diffRef: currentDiffRef,
+            branches: allBranches,
+            defaultBranch: defaultBranch
+        });
     }
 
     function renderFiles() {
