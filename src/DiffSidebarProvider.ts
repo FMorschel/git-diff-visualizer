@@ -248,7 +248,15 @@ export class DiffSidebarProvider implements vscode.WebviewViewProvider {
                             </div>
                             <div id="branch-dropdown" class="dropdown-content"></div>
                         </div>
-                        <button id="refresh-btn">Refresh</button>
+                        <div class="button-row">
+                            <button id="refresh-btn">Refresh</button>
+                            <button id="toggle-filter-btn" class="icon-btn" title="Filter Files">
+                                <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M6 12v-1h4v1H6zM4 7h8v1H4V7zm10-4v1H2V3h12z"/></svg>
+                            </button>
+                        </div>
+                        <div id="filter-container" class="filter-container" style="display: none;">
+                            <input type="text" id="file-filter-input" placeholder="Filter files..." autocomplete="off" />
+                        </div>
                     </div>
                     <div id="file-list" class="file-list">
                     </div>

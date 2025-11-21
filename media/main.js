@@ -7,6 +7,9 @@
     const saveDefaultBtn = document.getElementById('save-default-btn');
     const clearBtn = document.getElementById('clear-btn');
     const fileList = document.getElementById('file-list');
+    const toggleFilterBtn = document.getElementById('toggle-filter-btn');
+    const filterContainer = document.getElementById('filter-container');
+    const fileFilterInput = document.getElementById('file-filter-input');
 
     // Context Menu
     const contextMenu = document.createElement('div');
@@ -37,6 +40,21 @@
 
     refreshBtn.addEventListener('click', () => {
         vscode.postMessage({ type: 'getBranches' });
+    });
+
+    toggleFilterBtn.addEventListener('click', () => {
+        const isHidden = filterContainer.style.display === 'none';
+        filterContainer.style.display = isHidden ? 'block' : 'none';
+        if (isHidden) {
+            fileFilterInput.focus();
+        } else {
+            fileFilterInput.value = '';
+            renderFiles();
+        }
+    });
+
+    fileFilterInput.addEventListener('input', () => {
+        renderFiles();
     });
 
     saveDefaultBtn.addEventListener('click', () => {
@@ -147,14 +165,28 @@
         currentFiles = files;
         currentBranch = targetBranch;
         currentDiffRef = diffRef;
-        fileList.innerHTML = '';
+        renderFiles();
+    }
 
-        if (files.length === 0) {
-            fileList.innerHTML = '<div style="padding: 10px;">No changes found.</div>';
+    function renderFiles() {
+        fileList.innerHTML = '';
+        const filter = fileFilterInput.value.toLowerCase();
+        
+        const filteredFiles = currentFiles.filter(file => {
+            return file.fileName.toLowerCase().includes(filter) || 
+                   file.filePath.toLowerCase().includes(filter);
+        });
+
+        if (filteredFiles.length === 0) {
+            if (currentFiles.length === 0) {
+                fileList.innerHTML = '<div style="padding: 10px;">No changes found.</div>';
+            } else {
+                fileList.innerHTML = '<div style="padding: 10px;">No matching files found.</div>';
+            }
             return;
         }
 
-        files.forEach(file => {
+        filteredFiles.forEach(file => {
             const div = document.createElement('div');
             div.className = 'file-item';
             div.title = file.filePath;
@@ -181,7 +213,7 @@
             div.appendChild(infoDiv);
 
             div.addEventListener('click', () => {
-                vscode.postMessage({ type: 'openFile', file: file, branch: targetBranch, diffRef: currentDiffRef });
+                vscode.postMessage({ type: 'openFile', file: file, branch: currentBranch, diffRef: currentDiffRef });
             });
 
             div.addEventListener('contextmenu', (e) => {
