@@ -20,10 +20,15 @@
     let currentBranch = '';
     let currentDiffRef = '';
     let allBranches = [];
+    let activeContextMenuFileItem = null;
 
     // Close context menu on click anywhere
     document.addEventListener('click', () => {
         contextMenu.style.display = 'none';
+        if (activeContextMenuFileItem) {
+            activeContextMenuFileItem.classList.remove('context-menu-active');
+            activeContextMenuFileItem = null;
+        }
     });
 
     // Prevent default context menu globally
@@ -218,6 +223,11 @@
 
             div.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
+                if (activeContextMenuFileItem) {
+                    activeContextMenuFileItem.classList.remove('context-menu-active');
+                }
+                activeContextMenuFileItem = div;
+                div.classList.add('context-menu-active');
                 showContextMenu(e.clientX, e.clientY, file);
             });
 
@@ -229,6 +239,7 @@
         contextMenu.innerHTML = '';
         
         const actions = [
+            { label: 'Open File', action: () => vscode.postMessage({ type: 'openSourceFile', file: file }) },
             { label: 'Copy Path', action: () => copyToClipboard(file.filePath) },
             { label: 'Copy Absolute Path', action: () => copyToClipboard(file.absolutePath) },
             { label: 'Copy File Name', action: () => copyToClipboard(file.fileName) }

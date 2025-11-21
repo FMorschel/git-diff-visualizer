@@ -95,6 +95,11 @@
     color: var(--vscode-list-hoverForeground);
 }
 
+.file-item.context-menu-active {
+    background-color: var(--vscode-list-activeSelectionBackground);
+    color: var(--vscode-list-activeSelectionForeground);
+}
+
 .file-status {
     margin-right: 8px;
     font-weight: bold;

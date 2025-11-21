@@ -83,6 +83,13 @@ export class DiffSidebarProvider implements vscode.WebviewViewProvider {
                     }
                     break;
                 }
+                case 'openSourceFile': {
+                    if (data.file) {
+                        const doc = await vscode.workspace.openTextDocument(data.file.absolutePath);
+                        await vscode.window.showTextDocument(doc);
+                    }
+                    break;
+                }
             }
         });
     }
