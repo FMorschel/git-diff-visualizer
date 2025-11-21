@@ -220,8 +220,8 @@
         const winWidth = window.innerWidth;
         const winHeight = window.innerHeight;
 
-        if (x + rect.width > winWidth) x = winWidth - rect.width;
-        if (y + rect.height > winHeight) y = winHeight - rect.height;
+        if (x + rect.width > winWidth) {x = winWidth - rect.width;}
+        if (y + rect.height > winHeight) {y = winHeight - rect.height;}
 
         contextMenu.style.left = `${x}px`;
         contextMenu.style.top = `${y}px`;
