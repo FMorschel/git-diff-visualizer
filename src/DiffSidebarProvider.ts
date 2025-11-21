@@ -100,9 +100,9 @@ export class DiffSidebarProvider implements vscode.WebviewViewProvider {
             const branches = branchesOutput.split('\n')
                 .map((b: string) => b.trim())
                 .filter((b: string) => b !== '' && !b.includes('HEAD'));
-            
-            const currentBranch = (await GitService.run(cwd, ['branch', '--show-current'])).trim();
-            
+
+            const currentBranch = await GitService.run(cwd, ['branch', '--show-current']);
+
             // Check for saved default
             const savedDefault = this._context.workspaceState.get<string>('defaultBranch');
 
@@ -123,7 +123,7 @@ export class DiffSidebarProvider implements vscode.WebviewViewProvider {
             });
 
             this._view.webview.postMessage({ type: 'setBranches', branches, currentBranch, defaultBranch });
-            
+
             // Auto-load default branch files
             if (defaultBranch) {
                 this.loadFiles(defaultBranch);
@@ -142,14 +142,14 @@ export class DiffSidebarProvider implements vscode.WebviewViewProvider {
         const cwd = workspaceFolder.uri.fsPath;
 
         try {
-            const repoRoot = (await GitService.run(cwd, ['rev-parse', '--show-toplevel'])).trim();
+            const repoRoot = await GitService.run(cwd, ['rev-parse', '--show-toplevel']);
             const cleanTarget = targetBranch.trim();
-            
+
             // Find merge base to compare against "what I'm working on" vs "what others did"
             let diffRef = cleanTarget;
-            
+
             try {
-                const mergeBase = (await GitService.run(repoRoot, ['merge-base', cleanTarget, 'HEAD'])).trim();
+                const mergeBase = await GitService.run(repoRoot, ['merge-base', cleanTarget, 'HEAD']);
                 if (mergeBase) {
                     diffRef = mergeBase;
                 }
@@ -161,7 +161,7 @@ export class DiffSidebarProvider implements vscode.WebviewViewProvider {
 
             console.log(`Git Diff Visualizer: Using diffRef '${diffRef}' (target: '${cleanTarget}')`);
             const diffOutput = await GitService.run(repoRoot, ['diff', '--name-status', diffRef]);
-            
+
             const files = diffOutput.split('\n').filter((l: string) => l.trim()).map((line: string) => {
                 const parts = line.split('\t');
                 const status = parts[0];
@@ -192,14 +192,14 @@ export class DiffSidebarProvider implements vscode.WebviewViewProvider {
             return;
         }
         const cwd = workspaceFolder.uri.fsPath;
-        
+
         // filePath is relative to repo root (from git diff)
         const relativePath = file.filePath;
         const originalPath = file.originalPath || relativePath;
         const absolutePath = file.absolutePath;
 
         // We pass the repo root as cwd to the provider so it can run git show correctly
-        const repoRoot = (await GitService.run(cwd, ['rev-parse', '--show-toplevel'])).trim();
+        const repoRoot = await GitService.run(cwd, ['rev-parse', '--show-toplevel']);
 
         // Use diffRef (merge-base) if available, otherwise targetBranch
         const ref = diffRef || targetBranch;

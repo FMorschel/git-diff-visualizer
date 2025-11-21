@@ -11,11 +11,12 @@ export interface FileInfo {
 }
 
 export class GitService {
-    
+
     public static async run(cwd: string, args: string[]): Promise<string> {
         return new Promise((resolve, reject) => {
-            const child = cp.spawn('git', args, { 
+            const child = cp.spawn('git', args, {
                 cwd,
+                shell: true, // Required on Windows to find git in PATH
                 // eslint-disable-next-line @typescript-eslint/naming-convention
                 env: { ...process.env, 'LC_ALL': 'C' } // Ensure English output for parsing
             });
