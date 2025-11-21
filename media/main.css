@@ -1,0 +1,163 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: 0;
+}
+
+.controls {
+    padding: 10px;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    flex-shrink: 0;
+}
+
+.controls label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.input-group {
+    margin-bottom: 10px;
+    position: relative;
+}
+
+.input-wrapper {
+    display: flex;
+    gap: 4px;
+}
+
+.controls input {
+    margin-bottom: 0;
+    flex: 1;
+}
+
+.icon-btn {
+    width: 28px;
+    padding: 4px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: var(--vscode-dropdown-background);
+    min-width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--vscode-dropdown-border);
+    z-index: 1;
+    top: 100%;
+    left: 0;
+}
+
+.dropdown-content div {
+    color: var(--vscode-dropdown-foreground);
+    padding: 6px 4px;
+    text-decoration: none;
+    display: block;
+    cursor: pointer;
+}
+
+.dropdown-content div:hover {
+    background-color: var(--vscode-list-hoverBackground);
+    color: var(--vscode-list-hoverForeground);
+}
+
+.show {
+    display: block;
+}
+
+.file-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+}
+
+.file-item {
+    padding: 5px 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--vscode-tree-tableOddRowsBackground); 
+}
+
+.file-item:hover {
+    background-color: var(--vscode-list-hoverBackground);
+    color: var(--vscode-list-hoverForeground);
+}
+
+.file-status {
+    margin-right: 8px;
+    font-weight: bold;
+    width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.status-M { color: var(--vscode-gitDecoration-modifiedResourceForeground); }
+.status-A { color: var(--vscode-gitDecoration-addedResourceForeground); }
+.status-D { color: var(--vscode-gitDecoration-deletedResourceForeground); }
+.status-R { color: var(--vscode-gitDecoration-renamedResourceForeground); }
+
+.file-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.file-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+}
+
+.file-path {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.85em;
+    color: var(--vscode-descriptionForeground);
+}
+
+.context-menu {
+    display: none;
+    position: fixed;
+    z-index: 100;
+    background: var(--vscode-menu-background);
+    color: var(--vscode-menu-foreground);
+    border: 1px solid var(--vscode-menu-border);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    padding: 4px 0;
+    min-width: 160px;
+}
+
+.context-menu-item {
+    padding: 4px 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+}
+
+.context-menu-item:hover {
+    background: var(--vscode-menu-selectionBackground);
+    color: var(--vscode-menu-selectionForeground);
+}
+
+.context-menu-separator {
+    height: 1px;
+    background: var(--vscode-menu-separatorBackground);
+    margin: 4px 0;
+}
