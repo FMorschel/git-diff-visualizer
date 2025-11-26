@@ -10,6 +10,7 @@
     const toggleFilterBtn = document.getElementById('toggle-filter-btn');
     const filterContainer = document.getElementById('filter-container');
     const fileFilterInput = document.getElementById('file-filter-input');
+    const progressContainer = document.getElementById('progress-container');
 
     // Context Menu
     const contextMenu = document.createElement('div');
@@ -157,7 +158,14 @@
                 updateFiles(message.files, message.targetBranch, message.diffRef);
                 break;
             case 'error':
+                hideProgress();
                 fileList.innerHTML = `<div style="padding: 10px; color: var(--vscode-errorForeground);">${message.value}</div>`;
+                break;
+            case 'showProgress':
+                showProgress(message.message);
+                break;
+            case 'hideProgress':
+                hideProgress();
                 break;
         }
     });
@@ -298,5 +306,29 @@
             // Optional: Show a small tooltip or feedback?
             // For now, we rely on the user knowing it worked.
         });
+    }
+
+    function showProgress(message) {
+        if (progressContainer) {
+            // Reset animation by removing and re-adding the progress bar
+            const progressBar = progressContainer.querySelector('.progress-bar');
+            if (progressBar) {
+                progressBar.style.animation = 'none';
+                progressBar.offsetHeight; // Trigger reflow
+                progressBar.style.animation = '';
+            }
+            progressContainer.classList.remove('hidden');
+        }
+        // Clear file list and show loading message
+        if (fileList) {
+            const loadingMessage = message || 'Loading...';
+            fileList.innerHTML = `<div class="loading-message">${loadingMessage}</div>`;
+        }
+    }
+
+    function hideProgress() {
+        if (progressContainer) {
+            progressContainer.classList.add('hidden');
+        }
     }
 }());

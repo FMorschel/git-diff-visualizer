@@ -23,10 +23,73 @@ export class DiffSidebarProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'git-diff-visualizer.sidebar';
 
     private _view?: vscode.WebviewView;
+    private _lastKnownBranch?: string;
+    private _gitHeadWatcher?: vscode.FileSystemWatcher;
 
     constructor(
         private readonly _context: vscode.ExtensionContext,
-    ) { }
+    ) {
+        this._setupGitHeadWatcher();
+        this._setupGitExtensionWatcher();
+    }
+
+    private _setupGitHeadWatcher() {
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (!workspaceFolder) {
+            return;
+        }
+
+        // Watch for changes to .git/HEAD which changes when the branch changes
+        const gitHeadPattern = new vscode.RelativePattern(workspaceFolder, '.git/HEAD');
+        this._gitHeadWatcher = vscode.workspace.createFileSystemWatcher(gitHeadPattern);
+
+        this._gitHeadWatcher.onDidChange(async () => {
+            await this._checkForBranchChange();
+        });
+
+        // Register for disposal
+        this._context.subscriptions.push(this._gitHeadWatcher);
+    }
+
+    private async _setupGitExtensionWatcher() {
+        // Use VS Code's built-in Git extension for more reliable branch change detection
+        const gitExtension = vscode.extensions.getExtension('vscode.git');
+        if (!gitExtension) {
+            return;
+        }
+
+        // Wait for the Git extension to activate if it hasn't yet
+        if (!gitExtension.isActive) {
+            try {
+                await gitExtension.activate();
+            } catch (e) {
+                console.warn('Failed to activate Git extension', e);
+                return;
+            }
+        }
+
+        const git = gitExtension.exports?.getAPI(1);
+        if (!git) {
+            return;
+        }
+
+        // Watch for repository state changes
+        for (const repo of git.repositories) {
+            const disposable = repo.state.onDidChange(async () => {
+                await this._checkForBranchChange();
+            });
+            this._context.subscriptions.push(disposable);
+        }
+
+        // Also watch for new repositories being opened
+        const repoDisposable = git.onDidOpenRepository((repo: any) => {
+            const disposable = repo.state.onDidChange(async () => {
+                await this._checkForBranchChange();
+            });
+            this._context.subscriptions.push(disposable);
+        });
+        this._context.subscriptions.push(repoDisposable);
+    }
 
     public resolveWebviewView(
         webviewView: vscode.WebviewView,
@@ -43,6 +106,13 @@ export class DiffSidebarProvider implements vscode.WebviewViewProvider {
         };
 
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+
+        // Check for branch changes when the view becomes visible
+        webviewView.onDidChangeVisibility(async () => {
+            if (webviewView.visible) {
+                await this._checkForBranchChange();
+            }
+        });
 
         webviewView.webview.onDidReceiveMessage(async (data: WebviewMessage) => {
             switch (data.type) {
@@ -94,6 +164,34 @@ export class DiffSidebarProvider implements vscode.WebviewViewProvider {
         });
     }
 
+    private async _checkForBranchChange() {
+        if (!this._view) {
+            return;
+        }
+        
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (!workspaceFolder) {
+            return;
+        }
+        const cwd = workspaceFolder.uri.fsPath;
+
+        try {
+            const currentBranch = await GitService.run(cwd, ['branch', '--show-current']);
+            const trimmedBranch = currentBranch.trim();
+
+            // Reload if branch changed, or if we haven't tracked a branch yet
+            if (!this._lastKnownBranch || this._lastKnownBranch !== trimmedBranch) {
+                // Update tracked branch before reloading to avoid loops
+                this._lastKnownBranch = trimmedBranch;
+                // Branch has changed (or first check), reload everything
+                await this.loadBranches();
+            }
+        } catch (e) {
+            // Silently ignore errors during branch check
+            console.warn('Failed to check for branch change', e);
+        }
+    }
+
     private async loadBranches() {
         if (!this._view) { return; }
         const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
@@ -101,6 +199,8 @@ export class DiffSidebarProvider implements vscode.WebviewViewProvider {
             return;
         }
         const cwd = workspaceFolder.uri.fsPath;
+
+        this._view.webview.postMessage({ type: 'showProgress', message: 'Loading branches...' });
 
         try {
             const branchesOutput = await GitService.run(cwd, ['branch', '-a', '--format=%(refname:short)']);
@@ -131,6 +231,9 @@ export class DiffSidebarProvider implements vscode.WebviewViewProvider {
 
             this._view.webview.postMessage({ type: 'setBranches', branches, currentBranch, defaultBranch });
 
+            // Track the current branch for change detection
+            this._lastKnownBranch = currentBranch.trim();
+
             // Auto-load default branch files
             if (defaultBranch) {
                 this.loadFiles(defaultBranch);
@@ -147,6 +250,8 @@ export class DiffSidebarProvider implements vscode.WebviewViewProvider {
             return;
         }
         const cwd = workspaceFolder.uri.fsPath;
+
+        this._view.webview.postMessage({ type: 'showProgress', message: `Calculating changes against ${targetBranch}...` });
 
         try {
             const repoRoot = await GitService.run(cwd, ['rev-parse', '--show-toplevel']);
@@ -188,7 +293,9 @@ export class DiffSidebarProvider implements vscode.WebviewViewProvider {
             });
 
             this._view.webview.postMessage({ type: 'setFiles', files, targetBranch, diffRef });
+            this._view.webview.postMessage({ type: 'hideProgress' });
         } catch (e: any) {
+            this._view.webview.postMessage({ type: 'hideProgress' });
             this._view.webview.postMessage({ type: 'error', value: e.message });
         }
     }
@@ -264,6 +371,9 @@ export class DiffSidebarProvider implements vscode.WebviewViewProvider {
                         <div id="filter-container" class="filter-container" style="display: none;">
                             <input type="text" id="file-filter-input" placeholder="Filter files..." autocomplete="off" />
                         </div>
+                    </div>
+                    <div id="progress-container" class="progress-container hidden">
+                        <div class="progress-bar"></div>
                     </div>
                     <div id="file-list" class="file-list">
                     </div>
